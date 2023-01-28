@@ -1,0 +1,17 @@
+#include "ooo_cpu.h"
+#include <algorithm>
+
+void O3_CPU::initialize_branch_predictor()
+{
+    cout << "CPU " << cpu << " Taken branch predictor" << endl;
+}
+
+uint8_t O3_CPU::predict_branch(uint8_t previous_branch_predictions[], uint8_t branch_predicted)
+{
+    return 1;
+}
+
+void O3_CPU::last_branch_result(uint8_t actual_branches_taken[], uint8_t branches_found)
+{
+
+}

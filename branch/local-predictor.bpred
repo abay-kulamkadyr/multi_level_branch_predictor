@@ -1,0 +1,55 @@
+#include "ooo_cpu.h"
+#include <algorithm>
+#include <bitset>
+
+#define TABLE1_SIZE 12
+#define TABLE2_SIZE 16
+
+#define TABLE1_PRIME 4096           // 2^(TABLE1_SIZE)
+#define TABLE2_PRIME 65536           // 2^(TABLE2_SIZE)
+#define MAX_COUNTER 3
+
+uint32_t table1[NUM_CPUS][TABLE1_PRIME];
+int8_t table2[NUM_CPUS][TABLE2_PRIME];
+
+inline void clamp(int8_t& value) {
+    if (value < 0) value = 0;
+    else if (value > MAX_COUNTER) value = MAX_COUNTER;
+}
+
+void O3_CPU::initialize_branch_predictor()
+{
+    cout << "CPU " << cpu << " Local branch predictor" << endl;
+    for(int i = 0; i < TABLE1_PRIME; i++)
+        table1[cpu][i] = 0;
+    for(int i = 0; i < TABLE2_PRIME; i++)
+        table2[cpu][i] = 0;
+}
+
+uint8_t O3_CPU::predict_branch(uint64_t ip)
+{
+    uint32_t hash1 = ip % TABLE1_PRIME;
+    uint32_t hash2 = (table1[cpu][hash1] << (32-TABLE2_SIZE)) >> (32-TABLE2_SIZE);
+    uint8_t prediction = (table2[cpu][hash2] >= (int8_t)((MAX_COUNTER + 1)/2)) ? 1 : 0;
+
+    return prediction;
+}
+
+void O3_CPU::last_branch_result(uint64_t ip, uint8_t taken)
+{
+    uint32_t hash1 = ip % TABLE1_PRIME;
+    uint32_t hash2 = (table1[cpu][hash1] << (32-TABLE2_SIZE)) >> (32-TABLE2_SIZE);
+
+    if(taken)
+    {
+		table2[cpu][hash2]++;
+		clamp(table2[cpu][hash2]);
+        table1[cpu][hash1] = (table1[cpu][hash1] << 1) | 1;
+	}
+    else
+    {
+	    table2[cpu][hash2]--;
+		clamp(table2[cpu][hash2]);
+        table1[cpu][hash1] = table1[cpu][hash1] << 1;
+	}
+}

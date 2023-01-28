@@ -1,0 +1,17 @@
+#include "ooo_cpu.h"
+#include <algorithm>
+
+void O3_CPU::initialize_branch_predictor()
+{
+    cout << "CPU " << cpu << " Not Taken branch predictor" << endl;
+}
+
+uint8_t O3_CPU::predict_branch(uint64_t ip)
+{
+    return 0;
+}
+
+void O3_CPU::last_branch_result(uint64_t ip, uint8_t taken)
+{
+
+}

@@ -1,0 +1,186 @@
+#include "ooo_cpu.h"
+#include <algorithm>
+#include <bitset>
+#include <assert.h>
+
+#define GH_SIZE 13
+
+#define TABLE_SIZE  8192           // 2^GH_SIZE
+#define HASH        2
+#define PATTERN_TABLES_COUNT 2
+#define MAX_COUNTER 3
+
+int8_t hist_tables[PATTERN_TABLES_COUNT][TABLE_SIZE];
+
+uint64_t global_hist = 0;
+uint64_t old_ghr[LEVELS_TO_PREDICT];
+int64_t primary_branch_fetch_address = -1; 
+inline void clamp(int8_t& value)
+{
+    if (value < 0) value = 0;
+    else if (value > MAX_COUNTER) value = MAX_COUNTER;
+}
+
+void O3_CPU::initialize_branch_predictor()
+{
+    cout << "CPU " << cpu << " MGAs branch predictor" << endl;
+
+    for(int i = 0; i < PATTERN_TABLES_COUNT; i++){
+        for (int j = 0; j < TABLE_SIZE; j++) {
+            hist_tables[i][j] = 0;
+        }
+    }
+
+    global_hist = 0;
+}
+
+
+uint8_t O3_CPU::predict_branch(uint8_t previous_branch_predictions[], uint8_t branch_predicted, uint64_t fetch_address)
+{
+    
+     uint8_t prediction;
+    uint64_t hash = (global_hist << (64-GH_SIZE+branch_predicted)) >> (64-GH_SIZE+branch_predicted);     // K-branch_predicted bits of ghr
+    uint64_t table_num;
+    if (primary_branch_fetch_address != -1) {
+        table_num = primary_branch_fetch_address % HASH; 
+    } 
+    if(branch_predicted == 0)
+    {
+        old_ghr[0] = global_hist;
+        primary_branch_fetch_address = fetch_address;
+        table_num = primary_branch_fetch_address % HASH; 
+    }
+
+    if(branch_predicted == 1)
+    {
+        old_ghr[1] = global_hist;
+
+        if(previous_branch_predictions[0] == 1)
+        {
+            hash += 1;
+        }
+    }
+
+    if(branch_predicted == 2)
+    {
+        old_ghr[2] = global_hist;
+
+        if(previous_branch_predictions[1] == 1)
+        {
+            hash += 1;
+        }
+        if(previous_branch_predictions[0] == 1)
+        {
+            hash += 2;
+        }
+    }
+
+    if(branch_predicted == 3)
+    {
+        old_ghr[3] = global_hist;
+
+        if(previous_branch_predictions[2] == 1)
+        {
+            hash += 1;
+        }
+        if(previous_branch_predictions[1] == 1)
+        {
+            hash += 2;
+        }
+        if(previous_branch_predictions[0] == 1)
+        {
+            hash += 4;
+        }
+    }
+
+    prediction = (hist_tables[table_num][hash] >= (int8_t)((MAX_COUNTER + 1)/2)) ? 1 : 0;
+
+    if(prediction == 0)
+    {
+        global_hist = global_hist << 1;
+    }
+    else
+    {
+        global_hist = (global_hist << 1) | 1;
+    }
+    return prediction;
+
+    assert(false);
+
+    /////////// GLOBAL PREDICTOR ///////////
+    /*uint64_t hash = ((global_hist << (64-GH_SIZE)) >> (64-GH_SIZE));
+    uint8_t prediction = (hist_table[hash] >= (int8_t)((MAX_COUNTER + 1)/2)) ? 1 : 0;
+    return prediction;*/
+ 
+}
+
+void O3_CPU::last_branch_result(uint8_t actual_branches_taken[], uint8_t branches_found, uint64_t fetch_address)
+{
+    uint32_t table_num; 
+    if(primary_branch_fetch_address != -1)
+        table_num = primary_branch_fetch_address % HASH;
+    else 
+        table_num = 0; 
+ 
+    for(uint8_t i = 0; i < branches_found; i++)
+    {
+        uint64_t hash = (old_ghr[i] << (64-GH_SIZE+i)) >> (64-GH_SIZE+i);
+
+        switch(branches_found)
+        {
+            case 2:
+                if(actual_branches_taken[0] == 1)
+                {
+                    hash++;
+                }
+                break;
+
+            case 3:
+                if(actual_branches_taken[1] == 1)
+                {
+                    hash += 1;
+                }
+                if(actual_branches_taken[0] == 1)
+                {
+                    hash += 2;
+                }
+                break;
+            case 4:
+                if(actual_branches_taken[2] == 1)
+                {
+                    hash += 1;
+                }
+                if(actual_branches_taken[1] == 1)
+                {
+                    hash += 2;
+                }
+                if(actual_branches_taken[0] == 1)
+                {
+                    hash += 3;
+                }
+                break;
+        }
+
+        if(actual_branches_taken[i])
+        {
+            hist_tables[table_num][hash]++;
+            clamp(hist_tables[table_num][hash]);
+        }
+        else
+        {
+            hist_tables[table_num][hash]--;
+            clamp(hist_tables[table_num][hash]);
+        }
+
+        uint64_t mask = 1 << i;
+        if(actual_branches_taken[i] == 0)
+        {
+            global_hist = global_hist & ~mask;
+        }
+        else
+        {
+            global_hist = global_hist | mask;
+        }
+    }
+
+}

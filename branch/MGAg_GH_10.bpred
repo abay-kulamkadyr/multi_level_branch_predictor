@@ -1,0 +1,184 @@
+#include "ooo_cpu.h"
+#include <algorithm>
+#include <bitset>
+#include <assert.h>
+
+#define GH_SIZE 10
+
+#define TABLE_SIZE 1024           // 2^GH_SIZE
+#define MAX_COUNTER 3
+
+int8_t hist_table[TABLE_SIZE];
+uint64_t global_hist;
+
+uint64_t old_ghr[LEVELS_TO_PREDICT];
+
+inline void clamp(int8_t& value)
+{
+    if (value < 0) value = 0;
+    else if (value > MAX_COUNTER) value = MAX_COUNTER;
+}
+
+void O3_CPU::initialize_branch_predictor()
+{
+    cout << "CPU " << cpu << " MGAg branch predictor" << endl;
+
+    for(int i = 0; i < TABLE_SIZE; i++)
+        hist_table[i] = 0;
+    global_hist = 0;
+}
+
+uint8_t O3_CPU::predict_branch(uint8_t previous_branch_predictions[], uint8_t branch_predicted, uint64_t ip)
+{
+    //cout << std::bitset<64>(global_hist) << " | " << std::bitset<64>(hash) << "\n";
+
+    uint8_t prediction;
+    uint64_t hash = (global_hist << (64-GH_SIZE+branch_predicted)) >> (64-GH_SIZE+branch_predicted);     // K-branch_predicted bits of ghr
+
+    if(branch_predicted == 0)
+    {
+        old_ghr[0] = global_hist;
+    }
+
+    if(branch_predicted == 1)
+    {
+        old_ghr[1] = global_hist;
+
+        if(previous_branch_predictions[0] == 1)
+        {
+            hash += 1;
+        }
+    }
+
+    if(branch_predicted == 2)
+    {
+        old_ghr[2] = global_hist;
+
+        if(previous_branch_predictions[1] == 1)
+        {
+            hash += 1;
+        }
+        if(previous_branch_predictions[0] == 1)
+        {
+            hash += 2;
+        }
+    }
+
+    if(branch_predicted == 3)
+    {
+        old_ghr[3] = global_hist;
+
+        if(previous_branch_predictions[2] == 1)
+        {
+            hash += 1;
+        }
+        if(previous_branch_predictions[1] == 1)
+        {
+            hash += 2;
+        }
+        if(previous_branch_predictions[0] == 1)
+        {
+            hash += 4;
+        }
+    }
+
+    prediction = (hist_table[hash] >= (int8_t)((MAX_COUNTER + 1)/2)) ? 1 : 0;
+
+    if(prediction == 0)
+    {
+        global_hist = global_hist << 1;
+    }
+    else
+    {
+        global_hist = (global_hist << 1) | 1;
+    }
+    return prediction;
+
+    assert(false);
+
+    /////////// GLOBAL PREDICTOR ///////////
+    /*uint64_t hash = ((global_hist << (64-GH_SIZE)) >> (64-GH_SIZE));
+    uint8_t prediction = (hist_table[hash] >= (int8_t)((MAX_COUNTER + 1)/2)) ? 1 : 0;
+    return prediction;*/
+}
+
+void O3_CPU::last_branch_result(uint8_t actual_branches_taken[], uint8_t branches_found, uint64_t ip)
+{
+    for(uint8_t i = 0; i < branches_found; i++)
+    {
+        uint64_t hash = (old_ghr[i] << (64-GH_SIZE+i)) >> (64-GH_SIZE+i);
+
+        switch(branches_found)
+        {
+            case 2:
+                if(actual_branches_taken[0] == 1)
+                {
+                    hash++;
+                }
+                break;
+
+            case 3:
+                if(actual_branches_taken[1] == 1)
+                {
+                    hash += 1;
+                }
+                if(actual_branches_taken[0] == 1)
+                {
+                    hash += 2;
+                }
+                break;
+            case 4:
+                if(actual_branches_taken[2] == 1)
+                {
+                    hash += 1;
+                }
+                if(actual_branches_taken[1] == 1)
+                {
+                    hash += 2;
+                }
+                if(actual_branches_taken[0] == 1)
+                {
+                    hash += 4;
+                }
+                break;
+        }
+
+        if(actual_branches_taken[i])
+        {
+            hist_table[hash]++;
+            clamp(hist_table[hash]);
+        }
+        else
+        {
+            hist_table[hash]--;
+            clamp(hist_table[hash]);
+        }
+
+        uint64_t mask = 1 << i;
+        if(actual_branches_taken[i] == 0)
+        {
+            global_hist = global_hist & ~mask;
+        }
+        else
+        {
+            global_hist = global_hist | mask;
+        }
+    }
+
+
+    /////////// GLOBAL PREDICTOR ///////////
+    /*uint64_t hash = ((global_hist << (64-GH_SIZE)) >> (64-GH_SIZE));
+    if(actual_branches_taken[0])
+    {
+		hist_table[hash]++;
+		clamp(hist_table[hash]);
+        global_hist = (global_hist << 1) | 1;
+	}
+    else
+    {
+	    hist_table[hash]--;
+		clamp(hist_table[hash]);
+        global_hist = global_hist << 1;
+	}*/
+
+}

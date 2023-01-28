@@ -1,0 +1,67 @@
+#include "ooo_cpu.h"
+#include <algorithm>
+#include <bitset>
+
+#define PC_SIZE 18
+#define GH_SIZE 6
+
+#define TABLE_SIZE 16777216           // 2^(PC_SIZE + GH_SIZE)
+#define PC_PRIME 262144                // 2^(PC_SIZE)
+#define MAX_COUNTER 3
+
+int8_t pc_table[NUM_CPUS][TABLE_SIZE];
+uint64_t global_hist;
+
+//int printcount = 100;
+
+inline void clamp(int8_t& value) {
+    if (value < 0) value = 0;
+    else if (value > MAX_COUNTER) value = MAX_COUNTER;
+}
+
+void O3_CPU::initialize_branch_predictor()
+{
+    cout << "CPU " << cpu << " Global branch predictor" << endl;
+
+    for(int i = 0; i < TABLE_SIZE; i++)
+        pc_table[cpu][i] = 0;
+    global_hist = 0;
+}
+
+uint8_t O3_CPU::predict_branch(uint64_t ip)
+{
+    uint64_t hash = ((ip % PC_PRIME) << GH_SIZE) | ((global_hist << (64-GH_SIZE)) >> (64-GH_SIZE));
+    uint8_t prediction = (pc_table[cpu][hash] >= (int8_t)((MAX_COUNTER + 1)/2)) ? 1 : 0;
+
+    /*if(printcount > 0)
+    {
+        cout << std::bitset<64>(ip % PC_PRIME) << " | " << std::bitset<64>(global_hist) << " = " << std::bitset<64>(hash) << "\n";
+        printcount--;
+    }*/
+
+    return prediction;
+}
+
+void O3_CPU::last_branch_result(uint64_t ip, uint8_t taken)
+{
+    uint64_t hash = ((ip % PC_PRIME) << GH_SIZE) | ((global_hist << (64-GH_SIZE)) >> (64-GH_SIZE));
+
+    if(taken)
+    {
+		pc_table[cpu][hash]++;
+		clamp(pc_table[cpu][hash]);
+        global_hist = (global_hist << 1) | 1;
+	}
+    else
+    {
+	    pc_table[cpu][hash]--;
+		clamp(pc_table[cpu][hash]);
+        global_hist = global_hist << 1;
+	}
+
+    /*if(printcount > 0)
+    {
+        cout << (int)taken << " | " << std::bitset<64>(global_hist) << "\n";
+        printcount--;
+    }*/
+}
