@@ -1,0 +1,10 @@
+./build_champsim.sh MGAs_GH_5_PTC_512  no no no no lru 1    
+./build_champsim.sh MGAs_GH_6_PTC_256  no no no no lru 1    
+./build_champsim.sh MGAs_GH_7_PTC_128  no no no no lru 1    
+./build_champsim.sh MGAs_GH_8_PTC_64  no no no no lru 1    
+./build_champsim.sh MGAs_GH_9_PTC_32  no no no no lru 1    
+./build_champsim.sh MGAs_GH_10_PTC_16  no no no no lru 1    
+./build_champsim.sh MGAs_GH_11_PTC_8  no no no no lru 1    
+./build_champsim.sh MGAs_GH_12_PTC_4  no no no no lru 1    
+./build_champsim.sh MGAs_GH_13_PTC_2  no no no no lru 1    
+./build_champsim.sh MGAs_GH_14_PTC_1  no no no no lru 1    
