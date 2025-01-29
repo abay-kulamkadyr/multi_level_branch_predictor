@@ -51,6 +51,7 @@ Submit batch jobs to run experiments and generate output files:
     ```bash
     sbatch runMGAg.sh
     ```
+
 - **MGAs Predictor**
     ```bash
     sbatch runMGAs.sh
@@ -58,7 +59,7 @@ Submit batch jobs to run experiments and generate output files:
 ## Configuration
 
 To adjust the levels of prediction, modify the LEVELS_TO_PREDICT macro in the ooo_cpu.h header file:
-    ```c
+    ```
     #define LEVELS_TO_PREDICT <desired_number_of_levels>
     ```
 
