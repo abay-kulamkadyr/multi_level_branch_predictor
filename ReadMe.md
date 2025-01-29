@@ -13,9 +13,6 @@
 - [Implementation Details](#implementation-details)
 - [Benchmarking Results](#benchmarking-results)
 - [Resources](#resources)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
 
 ## Overview
 
