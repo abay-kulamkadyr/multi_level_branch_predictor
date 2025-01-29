@@ -42,15 +42,16 @@ To generate binary files for the desired predictor, execute the corresponding sh
 
     ./buildMGAs.sh
   ```
-- **Running Experiments**
+
+## **Running Experiments**
 
 Submit batch jobs to run experiments and generate output files:
 
--- **MGAg Predictor**
+- **MGAg Predictor**
     ```bash
     sbatch runMGAg.sh
     ```
--- **MGAs Predictor**
+- **MGAs Predictor**
     ```bash
     sbatch runMGAs.sh
     ```
